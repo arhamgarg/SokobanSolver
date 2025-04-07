@@ -1,0 +1,176 @@
+@startuml SokobanSolver
+
+' Package definitions
+package "com.sokoban.main" {
+  class SokobanMain {
+    +main(args: String[]): void
+  }
+
+  class SokobanSolver {
+    +parseArguments(args: String[]): void
+    -printUsage(): void
+  }
+}
+
+package "com.sokoban.model" {
+  class BoardState {
+    -board: byte[][]
+    -player: Point
+    -boxes: Set<Point>
+    -goals: Set<Point>
+    -directionTaken: Point
+    -cost: int
+    -depth: int
+    +{static} PLAYER: byte
+    +{static} WALL: byte
+    +{static} BOX: byte
+    +{static} GOAL: byte
+    +canMove(direction: Point): boolean
+    +getMove(direction: Point): BoardState
+    +isSolved(): boolean
+    +nextMoveHas(field: byte, direction: Point): boolean
+    +pointHas(point: Point, field: byte): boolean
+    +{static} parseBoardInput(boardInput: String): BoardState
+    +getDirectionTaken(): Point
+    +getPlayerPosition(): Point
+    +getDepth(): int
+    +setDepth(depth: int): void
+    +setCost(cost: int): void
+    +getCost(): int
+    +getGoals(): Set<Point>
+    +getBoxes(): Set<Point>
+    +compareTo(other: BoardState): int
+  }
+
+  class Direction {
+    +{static} UP: Point
+    +{static} RIGHT: Point
+    +{static} DOWN: Point
+    +{static} LEFT: Point
+    +{static} directionToChar(direction: Point): char
+  }
+
+  class NoSolutionException {
+    +NoSolutionException()
+    +NoSolutionException(message: String)
+  }
+}
+
+package "com.sokoban.solver" {
+  abstract class AbstractSolver {
+    #currentState: BoardState
+    #visited: HashSet<BoardState>
+    #backtrack: HashMap<BoardState, BoardState>
+    #queue: Queue<BoardState>
+    -startTime: long
+    -endTime: long
+    -previouslySeen: int
+    -timeoutMillis: long
+    +setTimeout(timeoutMillis: long): void
+    +search(): String
+    #searchStart(): void
+    #abstract searchFunction(validMoves: ArrayList<BoardState>): void
+    #getValidMoves(): ArrayList<BoardState>
+    #backtrackMoves(finalState: BoardState): String
+    +getNodesExplored(): int
+    +getPreviouslySeen(): int
+    +getFringeLength(): int
+    +getVisitedLength(): int
+    +getElapsedTimeMillis(): long
+  }
+
+  class BFSSolver {
+    +BFSSolver(initialState: BoardState)
+    +searchFunction(validMoves: ArrayList<BoardState>): void
+  }
+
+  class DFSSolver {
+    +DFSSolver(initialState: BoardState)
+    +searchFunction(validMoves: ArrayList<BoardState>): void
+  }
+
+  class UniformCostSolver {
+    +UniformCostSolver(initialState: BoardState)
+    +searchFunction(validMoves: ArrayList<BoardState>): void
+    -uniformCostFunction(state: BoardState, baseCost: int): void
+  }
+
+  class GreedyBFSSolver {
+    -heuristic: Heuristic
+    +GreedyBFSSolver(initialState: BoardState, heuristic: Heuristic)
+    +searchStart(): void
+    +searchFunction(validMoves: ArrayList<BoardState>): void
+  }
+
+  class AStarSolver {
+    -heuristic: Heuristic
+    +AStarSolver(initialBoard: BoardState, heuristic: Heuristic)
+    +searchFunction(validMoves: ArrayList<BoardState>): void
+  }
+}
+
+package "com.sokoban.heuristic" {
+  interface Heuristic {
+    +score(state: BoardState): void
+  }
+
+  class BoxGoalHeuristic {
+    +score(state: BoardState): void
+  }
+
+  class ManhattanHeuristic {
+    +score(state: BoardState): void
+    -getManhattanDistance(p1: Point, p2: Point): int
+  }
+
+  class ImprovedManhattanHeuristic {
+    +score(state: BoardState): void
+    -calculateOptimalAssignment(boxes: Set<Point>, goals: Set<Point>): int
+    -calculateBoxInteractionPenalty(boxes: Set<Point>, state: BoardState): int
+    -getManhattanDistance(p1: Point, p2: Point): int
+  }
+}
+
+package "com.sokoban.util" {
+  class DeadlockDetector {
+    +{static} hasDeadlock(state: BoardState): boolean
+    -{static} hasCornerDeadlock(state: BoardState): boolean
+    -{static} hasFreezeDeadlock(state: BoardState): boolean
+  }
+
+  class TunnelMacroDetector {
+    +{static} detectTunnelMacro(state: BoardState, direction: Point): BoardState
+    -{static} isTunnelEntrance(state: BoardState, boxPos: Point, direction: Point): boolean
+    -{static} isTunnelPosition(state: BoardState, pos: Point, direction: Point): boolean
+    -{static} createTunnelEndState(state: BoardState, initialBoxPos: Point, finalBoxPos: Point, direction: Point): BoardState
+  }
+}
+
+' Relationships
+SokobanMain --> SokobanSolver: uses
+SokobanSolver --> BoardState: creates
+SokobanSolver --> AbstractSolver: creates concrete solvers
+
+AbstractSolver <|-- BFSSolver
+AbstractSolver <|-- DFSSolver
+AbstractSolver <|-- UniformCostSolver
+AbstractSolver <|-- GreedyBFSSolver
+AbstractSolver <|-- AStarSolver
+
+AbstractSolver --> BoardState: operates on
+AbstractSolver --> NoSolutionException: throws
+
+GreedyBFSSolver --> Heuristic: uses
+AStarSolver --> Heuristic: uses
+
+Heuristic <|.. BoxGoalHeuristic
+Heuristic <|.. ManhattanHeuristic
+Heuristic <|.. ImprovedManhattanHeuristic
+
+BoardState --> Direction: uses
+BoardState ..|> "java.lang.Comparable": implements
+
+AbstractSolver --> DeadlockDetector: uses
+AbstractSolver --> TunnelMacroDetector: uses
+
+@enduml
